@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Search</title>
+    <link rel="stylesheet" href="weather.css"> 
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>Weather Search</h2>
+        <form id="weatherForm">
+            <label for="street">Street:</label>
+            <input type="text" id="street" name="street">
+
+            <label for="city">City:</label>
+            <input type="text" id="city" name="city">
+
+            <label for="state">State:</label>
+            <select id="state" name="state">
+                <option value="">Select State</option>
+                <option value="CA">California</option>
+                <option value="NY">New York</option>
+            </select>
+
+            <!-- Auto-detect location checkbox -->
+            <label for="auto-detect">
+                <input type="checkbox" id="auto-detect" name="auto-detect">
+                Check here to use your current location
+            </label>
+
+            <!-- Buttons -->
+            <div class="buttons">
+                <button type="button" onclick="submitForm()">Submit</button>
+                <button type="button" onclick="clearForm()">Clear</button>
+            </div>
+        </form>
+
+        <div id="results" class="results">
+            <!-- I want to show results here -->
+        </div>
+    </div>
+
+    <script>
+        function submitForm() {
+            const autoDetect = document.getElementById("auto-detect").checked;
+            const street = document.getElementById("street").value;
+            const city = document.getElementById("city").value;
+            const state = document.getElementById("state").value;
+
+            if (!autoDetect && (!street || !city || !state)) {
+                alert("Please fill all the fields or check the auto-detect option.");
+                return;
+            }
+
+            if (autoDetect) {
+                fetch("https://ipinfo.io?token=YOUR_TOKEN")  
+                    .then(response => response.json())
+                    .then(data => {
+                        const location = `${data.city}, ${data.region}, ${data.country}`;
+                        displayResults(`Auto-detected location: ${location}`);
+                        sendToServer(data.city, data.region, data.country);  // Call to send data to Flask
+                    })
+                    .catch(error => {
+                        console.error("Error fetching location:", error);
+                        displayResults("Error detecting location.");
+                    });
+            } else {
+                // Send manual input data to the server
+                sendToServer(street, city, state);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById("weatherForm").reset();
+            document.getElementById("results").innerHTML = "";
+        }
+
+        function displayResults(message) {
+            document.getElementById("results").innerHTML = `<p>${message}</p>`;
+        }
+
+        function sendToServer(street, city, state) {
+            const url = `/weather?street=${encodeURIComponent(street)}&city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    displayResults(`Weather data: ${JSON.stringify(data)}`);
+                })
+                .catch(error => {
+                    console.error("Error fetching weather data:", error);
+                    displayResults("Error fetching weather data.");
+                });
+        }
+    </script>
+
+</body>
+</html>
