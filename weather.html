@@ -9,37 +9,45 @@
 <body>
 
     <div class="form-container">
-        <h2>Weather Search</h2>
-        <form id="weatherForm">
-            <label for="street">Street:</label>
+        <div class="banner">
+            <img src="images/banner.jpg" alt="Cloud Banner">
+            <div class="banner-text">
+                Weather Search
+            </div>
+        </div>
+        <form class="weatherform" id="weatherForm">
+            <label for="street">Street</label>
             <input type="text" id="street" name="street">
 
-            <label for="city">City:</label>
-            <input type="text" id="city" name="city">
-
-            <label for="state">State:</label>
-            <select id="state" name="state">
-                <option value="">Select State</option>
-                <option value="CA">California</option>
-                <option value="NY">New York</option>
-            </select>
-
-            <!-- Auto-detect location checkbox -->
+            <div class="city-state-container">
+                <div class="city-state">
+                    <label for="city">City</label>
+                    <input type="text" id="city" name="city">
+                </div>
+                <div class="city-state">
+                    <label for="state">State</label>
+                    <select id="state" name="state">
+                        <option value="">Select State</option>
+                        <option value="CA">California</option>
+                        <option value="NY">New York</option>
+                    </select>
+                </div>
+            </div>
+            <hr>
             <label for="auto-detect">
                 <input type="checkbox" id="auto-detect" name="auto-detect">
                 Check here to use your current location
             </label>
-
-            <!-- Buttons -->
             <div class="buttons">
                 <button type="button" onclick="submitForm()">Submit</button>
                 <button type="button" onclick="clearForm()">Clear</button>
             </div>
         </form>
 
-        <div id="results" class="results">
-            <!-- I want to show results here -->
-        </div>
+    </div>
+
+    <div id="results" class="results">
+        <!-- How can i show results here  -->
     </div>
 
     <script>
@@ -55,20 +63,19 @@
             }
 
             if (autoDetect) {
-                fetch("https://ipinfo.io?token=YOUR_TOKEN")  
+                fetch("https://ipinfo.io?token=YOUR_IPINFO_TOKEN")  
                     .then(response => response.json())
                     .then(data => {
                         const location = `${data.city}, ${data.region}, ${data.country}`;
                         displayResults(`Auto-detected location: ${location}`);
-                        sendToServer(data.city, data.region, data.country);  // Call to send data to Flask
+                        sendToServer(data.city, data.region, data.country);  
                     })
                     .catch(error => {
                         console.error("Error fetching location:", error);
                         displayResults("Error detecting location.");
                     });
             } else {
-                // Send manual input data to the server
-                sendToServer(street, city, state);
+                sendToServer(street, city, state);  
             }
         }
 
@@ -82,16 +89,36 @@
         }
 
         function sendToServer(street, city, state) {
-            const url = `/weather?street=${encodeURIComponent(street)}&city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`;
-            
-            fetch(url)
+            const apiKey = 'AIzaSyD5fCf4IpcurNZal3VYv2UUwOO_kbSnmtY'; 
+            const address = `${street}, ${city}, ${state}`;
+            const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+
+          
+            fetch(geocodeUrl)
                 .then(response => response.json())
                 .then(data => {
-                    displayResults(`Weather data: ${JSON.stringify(data)}`);
+                    if (data.status === 'OK') {
+                        const location = data.results[0].geometry.location;
+                        const lat = location.lat;
+                        const lng = location.lng;
+                        displayResults('Latitude and Longitude:', lat, lng);
+
+                        fetch(`/weather?lat=${lat}&lng=${lng}`)
+                            .then(response => response.json())
+                            .then(weatherData => {
+                                displayResults(`Weather data: ${JSON.stringify(weatherData)}`);
+                            })
+                            .catch(error => {
+                                console.error("Error fetching weather data:", error);
+                                displayResults("Error fetching weather data.", lat); 
+                            });
+                    } else {
+                        displayResults("Geocoding failed. Please check the address.");
+                    }
                 })
                 .catch(error => {
-                    console.error("Error fetching weather data:", error);
-                    displayResults("Error fetching weather data.");
+                    console.error("Error fetching geocoding data:", error);
+                    displayResults("Error fetching geocoding data.");
                 });
         }
     </script>
