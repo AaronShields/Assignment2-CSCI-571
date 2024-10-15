@@ -4,114 +4,276 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Search</title>
-    <link rel="stylesheet" href="weather.css"> 
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <script src="https://code.highcharts.com/modules/series-label.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <script src="https://code.highcharts.com/modules/windbarb.js"></script>
+
+    <link rel="stylesheet" href="weather.css">
 </head>
 <body>
 
     <div class="form-container">
         <div class="banner">
             <img src="images/banner.jpg" alt="Cloud Banner">
-            <div class="banner-text">
-                Weather Search
+            <div class="banner-text">Weather Search
+                <div class="subheader">Fill out the form to get weather info!</div>
             </div>
         </div>
         <form class="weatherform" id="weatherForm">
-            <label for="street">Street</label>
+            <label for="street">Street<span class="required-asterisk">*</span></label>
             <input type="text" id="street" name="street">
-
+            
             <div class="city-state-container">
                 <div class="city-state">
-                    <label for="city">City</label>
+                    <label for="city">City<span class="required-asterisk">*</span></label>
                     <input type="text" id="city" name="city">
                 </div>
                 <div class="city-state">
-                    <label for="state">State</label>
+                    <label for="state">State<span class="required-asterisk">*</span></label>
                     <select id="state" name="state">
                         <option value="">Select State</option>
+                        <option value="AL">Alabama</option>
+                        <option value="AK">Alaska</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="AR">Arkansas</option>
                         <option value="CA">California</option>
+                        <option value="CO">Colorado</option>
+                        <option value="CT">Connecticut</option>
+                        <option value="DE">Delaware</option>
+                        <option value="FL">Florida</option>
+                        <option value="GA">Georgia</option>
+                        <option value="HI">Hawaii</option>
+                        <option value="ID">Idaho</option>
+                        <option value="IL">Illinois</option>
+                        <option value="IN">Indiana</option>
+                        <option value="IA">Iowa</option>
+                        <option value="KS">Kansas</option>
+                        <option value="KY">Kentucky</option>
+                        <option value="LA">Louisiana</option>
+                        <option value="ME">Maine</option>
+                        <option value="MD">Maryland</option>
+                        <option value="MA">Massachusetts</option>
+                        <option value="MI">Michigan</option>
+                        <option value="MN">Minnesota</option>
+                        <option value="MS">Mississippi</option>
+                        <option value="MO">Missouri</option>
+                        <option value="MT">Montana</option>
+                        <option value="NE">Nebraska</option>
+                        <option value="NV">Nevada</option>
+                        <option value="NH">New Hampshire</option>
+                        <option value="NJ">New Jersey</option>
+                        <option value="NM">New Mexico</option>
                         <option value="NY">New York</option>
-                    </select>
+                        <option value="NC">North Carolina</option>
+                        <option value="ND">North Dakota</option>
+                        <option value="OH">Ohio</option>
+                        <option value="OK">Oklahoma</option>
+                        <option value="OR">Oregon</option>
+                        <option value="PA">Pennsylvania</option>
+                        <option value="RI">Rhode Island</option>
+                        <option value="SC">South Carolina</option>
+                        <option value="SD">South Dakota</option>
+                        <option value="TN">Tennessee</option>
+                        <option value="TX">Texas</option>
+                        <option value="UT">Utah</option>
+                        <option value="VT">Vermont</option>
+                        <option value="VA">Virginia</option>
+                        <option value="WA">Washington</option>
+                        <option value="WV">West Virginia</option>
+                        <option value="WI">Wisconsin</option>
+                        <option value="WY">Wyoming</option>
+                    </select>  
                 </div>
             </div>
             <hr>
             <label for="auto-detect">
-                <input type="checkbox" id="auto-detect" name="auto-detect">
                 Check here to use your current location
+                <input type="checkbox" id="auto-detect" name="auto-detect">
             </label>
             <div class="buttons">
-                <button type="button" onclick="submitForm()">Submit</button>
-                <button type="button" onclick="clearForm()">Clear</button>
-            </div>
+                <button type="button" class="submit-button" onclick="submitForm()">Submit</button>
+                <button type="button" class="clear-button" onclick="clearForm()">Clear</button>
+            </div>            
         </form>
-
     </div>
 
-    <div id="results" class="results">
-        <!-- How can i show results here  -->
+    <div id="weather-card-container"></div>
+    <div id="forecast-table-container">
+        <table class="weather-forecast">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Temp High</th>
+                    <th>Temp Low</th>
+                    <th>Wind Speed</th>
+                </tr>
+            </thead>
+            <tbody id="forecast-body">
+            </tbody>
+        </table>
     </div>
+    <h2 id="weather-charts-header" style="display: none;">Weather Charts</h2>
+    <div id="down-arrow-container" style="display: none;">
+        <img src="images/point-down-512.png" alt="Toggle Arrow" class="down-arrow" id="toggle-arrow">
+    </div>
+    <div id="chart-container"></div>
+    <div id="meteogram-container"></div>
+
+    <div id="realtime-weather"></div>
+    <div id="results"></div>
 
     <script>
+        let lat = null;
+        let lng = null;
+        
+        function showErrorMessage(inputElement) {
+            if (!inputElement) {
+        console.error("Input element not found");
+        return;
+    }
+
+    // Remove any previous error message if it exists
+    const existingError = inputElement.parentNode.querySelector('.error-message');
+    if (existingError) {
+        existingError.remove();
+    }
+
+    const errorMessage = document.createElement('div');
+    errorMessage.className = 'error-message';
+    errorMessage.textContent = "Fill out this field";
+
+    // Add the error message to the parent of the input
+    inputElement.parentNode.appendChild(errorMessage);
+
+    const inputHeight = inputElement.offsetHeight;
+    const errorHeight = errorMessage.offsetHeight;
+
+    errorMessage.style.position = 'absolute';
+    errorMessage.style.position = 'absolute';
+    errorMessage.style.top = `${inputElement.offsetTop - errorHeight - 5}px`; // Position above the input
+}
+
         function submitForm() {
             const autoDetect = document.getElementById("auto-detect").checked;
-            const street = document.getElementById("street").value;
-            const city = document.getElementById("city").value;
-            const state = document.getElementById("state").value;
+            const street = document.getElementById("street");
+            const city = document.getElementById("city");
+            const state = document.getElementById("state");
 
-            if (!autoDetect && (!street || !city || !state)) {
-                alert("Please fill all the fields or check the auto-detect option.");
-                return;
+            // Remove previous error messages
+            document.querySelectorAll('.error-message').forEach(function(el) {
+                el.remove();
+            });
+
+            let formError = false;
+
+            if (!autoDetect) {
+                if (!street.value) {
+                    showErrorMessage(street);
+                    formError = true;
+            }
+            if (!city.value) {
+                showErrorMessage(city);
+                formError = true;
+            }
+            if (!state.value) {
+                showErrorMessage(state);
+                formError = true;
+            }
+            }
+
+            if (formError) {
+                return; // Stop the form submission if there are errors
             }
 
             if (autoDetect) {
-                fetch("https://ipinfo.io?token=YOUR_IPINFO_TOKEN")  
+                fetch("https://ipinfo.io?token=eae423885309be")
                     .then(response => response.json())
                     .then(data => {
-                        const location = `${data.city}, ${data.region}, ${data.country}`;
-                        displayResults(`Auto-detected location: ${location}`);
-                        sendToServer(data.city, data.region, data.country);  
+                        const latLng = data.loc.split(',');
+                        lat = latLng[0];
+                        lng = latLng[1];
+
+                        const detectedCity = data.city || '';
+                        const detectedRegion = data.region || '';
+                        fetchWeatherData(lat, lng, detectedCity, detectedRegion);
                     })
                     .catch(error => {
                         console.error("Error fetching location:", error);
                         displayResults("Error detecting location.");
                     });
             } else {
-                sendToServer(street, city, state);  
+                sendToServer(street.value, city.value, state.value);
             }
         }
 
         function clearForm() {
-            document.getElementById("weatherForm").reset();
-            document.getElementById("results").innerHTML = "";
-        }
+    document.getElementById("weatherForm").reset();
+
+    document.getElementById("weather-card-container").innerHTML = "";
+    document.getElementById("chart-container").innerHTML = "";
+    document.getElementById("meteogram-container").innerHTML = "";
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("realtime-weather").innerHTML = "";
+    document.getElementById("weather-charts-header").style.display = "none";
+   
+    document.getElementById("forecast-table-container").style.display = "none";
+
+    let toggleArrow = document.getElementById("toggle-arrow");
+    if (toggleArrow) {
+        toggleArrow.src = "images/point-down-512.png"; 
+    }
+    document.getElementById("down-arrow-container").style.display = "none";
+    document.getElementById("meteogram-container").style.display = "none";
+
+
+    let forecastBody = document.getElementById('forecast-body');
+    if (forecastBody) {
+        forecastBody.innerHTML = ''; 
+    } else {
+        console.error("forecast-body not found!");
+    }
+
+    document.querySelectorAll('.error-message').forEach(function(el) {
+        el.remove();
+    });
+}
+
+function formatTimeToAMPM(timeStr) {
+    const date = new Date(timeStr);
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    hours = hours % 12 || 12; 
+    const minutesFormatted = minutes < 10 ? '0' + minutes : minutes; 
+
+    return `${hours}${ampm}`; 
+}
+
+
 
         function displayResults(message) {
             document.getElementById("results").innerHTML = `<p>${message}</p>`;
         }
 
         function sendToServer(street, city, state) {
-            const apiKey = 'AIzaSyD5fCf4IpcurNZal3VYv2UUwOO_kbSnmtY'; 
+            const apiKey = 'AIzaSyD5fCf4IpcurNZal3VYv2UUwOO_kbSnmtY';
             const address = `${street}, ${city}, ${state}`;
             const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
 
-          
             fetch(geocodeUrl)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'OK') {
                         const location = data.results[0].geometry.location;
-                        const lat = location.lat;
-                        const lng = location.lng;
-                        displayResults('Latitude and Longitude:', lat, lng);
-
-                        fetch(`/weather?lat=${lat}&lng=${lng}`)
-                            .then(response => response.json())
-                            .then(weatherData => {
-                                displayResults(`Weather data: ${JSON.stringify(weatherData)}`);
-                            })
-                            .catch(error => {
-                                console.error("Error fetching weather data:", error);
-                                displayResults("Error fetching weather data.", lat); 
-                            });
+                        lat = location.lat;
+                        lng = location.lng;
+                        fetchWeatherData(lat, lng);
                     } else {
                         displayResults("Geocoding failed. Please check the address.");
                     }
@@ -121,7 +283,547 @@
                     displayResults("Error fetching geocoding data.");
                 });
         }
-    </script>
+
+        function fetchWeatherData(lat, lng, detectedCity = '', detectedRegion = '') {
+    fetch(`http://127.0.0.1:5000/weather?lat=${lat}&lng=${lng}`)
+        .then(response => response.json())
+        .then(weatherData => {
+            console.log("Combined Weather Data Response:", weatherData);
+
+            const street = document.getElementById('street').value || '';
+            const city = document.getElementById('city').value || detectedCity;
+            const state = document.getElementById('state').value || detectedRegion;
+            const address = `${street}, ${city}, ${state}`;
+
+            if (weatherData.realtime && weatherData.realtime.data) {
+                const realtime = weatherData.realtime.data.values;
+
+                const currentTemp = realtime.temperature || "N/A";
+                const currentHumidity = realtime.humidity || "N/A";
+                const currentPressure = realtime.pressureSurfaceLevel || "N/A";
+                const currentWindSpeed = realtime.windSpeed || "N/A";
+                const currentVisibility = realtime.visibility || "N/A";
+                const currentCloudCover = realtime.cloudCover || "N/A";
+                const currentUVIndex = (realtime.uvIndex !== null && realtime.uvIndex !== undefined) ? realtime.uvIndex : "N/A";
+                const weatherCode = realtime.weatherCode || 0;
+
+                const weatherImages = {
+    1000: "clear day",              // Clear, Sunny
+    10001: "clear night",           // Clear Night
+    1001: "cloudy",                 // Cloudy
+    1100: "mostly clear day",        // Mostly Clear Day
+    11001: "mostly clear night",     // Mostly Clear Night
+    1101: "partly cloudy day",       // Partly Cloudy Day
+    11011: "partly cloudy night",    // Partly Cloudy Night
+    1102: "mostly cloudy",           // Mostly Cloudy
+    2000: "fog",                    // Fog
+    2100: "fog light",              // Light Fog
+    4000: "drizzle",                // Drizzle
+    4200: "rain light",             // Light Rain
+    4001: "rain",                   // Rain
+    4201: "rain heavy",             // Heavy Rain
+    5000: "snow",                   // Snow
+    5001: "flurries",               // Flurries
+    5100: "snow light",             // Light Snow
+    5101: "snow heavy",             // Heavy Snow
+    6000: "freezing drizzle",       // Freezing Drizzle
+    6001: "freezing rain",          // Freezing Rain
+    6200: "freezing rain light",    // Light Freezing Rain
+    6201: "freezing rain heavy",    // Heavy Freezing Rain
+    7000: "ice pellets",            // Ice Pellets
+    7101: "ice pellets heavy",      // Heavy Ice Pellets
+    7102: "ice pellets light",      // Light Ice Pellets
+    8000: "Thunderstorm",                 // Thunderstorm
+};   
+
+const weatherDescription = weatherImages[weatherCode] || "Unknown";
+
+const weatherImage = weatherDescription.replace(/ /g, "_");
+
+                let weatherCardHTML = `
+                <div class="weather-card">
+                        <div class="address">${address}</div>
+                        <div class="weather-main">
+                            <div class="weather-left">
+                                <img src="weather_images/${weatherImage}.svg" alt="Weather Icon" class="weather-icon">
+                                <div class="weather-code">${weatherDescription}</div>
+                            </div>
+                            <div class="temperature">${currentTemp}°F</div>
+                        </div>
+                        <div class="weather-details">
+                            <div class="weather-item">
+                                <p class="title">Humidity</p>
+                                <img src="images/humidity.png" alt="Humidity Icon" class="weather-detail-icon"> 
+                                <p class="value">${currentHumidity}%</p>
+                            </div>
+                            <div class="weather-item">
+                                <p class="title">Pressure</p>
+                                <img src="images/Pressure.png" alt="Humidity Icon" class="weather-detail-icon"> 
+                                <p class="value">${currentPressure} inHg</p>
+                            </div>
+                            <div class="weather-item">
+                                <p class="title">Wind Speed</p>
+                                <img src="images/Wind_Speed.png" alt="Humidity Icon" class="weather-detail-icon"> 
+                                <p class="value">${currentWindSpeed} mph</p>
+                            </div>
+                            <div class="weather-item">
+                                <p class="title">Visibility</p>
+                                <img src="images/Visibility.png" alt="Humidity Icon" class="weather-detail-icon"> 
+                                <p class="value">${currentVisibility} miles</p>
+                            </div>
+                            <div class="weather-item">
+                                <p class="title">Cloud Cover</p>
+                                <img src="images/Cloud_Cover.png" alt="Humidity Icon" class="weather-detail-icon"> 
+                                <p class="value">${currentCloudCover}%</p>
+                            </div>
+                            <div class="weather-item">
+                                <p class="title">UV Index</p>
+                                <img src="images/UV_Level.png" alt="Humidity Icon" class="weather-detail-icon"> 
+                                <p class="value">${currentUVIndex}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById("weather-card-container").innerHTML = weatherCardHTML;
+
+                const forecastTableContainer = document.getElementById("forecast-table-container");
+                forecastTableContainer.classList.add("show");
+
+            if (weatherData.forecast && weatherData.forecast.timelines.daily) {
+                const forecastData = weatherData.forecast.timelines.daily;
+                const forecastBody = document.getElementById("forecast-body");
+
+                forecastBody.innerHTML = '';
+
+                forecastData.forEach((day, index) => {
+                    const date = new Date(day.time).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    const maxTemp = day.values.temperatureMax || "N/A";
+                    const minTemp = day.values.temperatureMin || "N/A";
+                    const weatherCode = day.values.weatherCodeMax || 0;
+                    const windSpeed = day.values.windSpeedAvg || "N/A"; 
+
+                    const weatherImages = {
+    1000: "clear day",              // Clear, Sunny
+    10001: "clear night",           // Clear Night
+    1001: "cloudy",                 // Cloudy
+    1100: "mostly clear day",        // Mostly Clear Day
+    11001: "mostly clear night",     // Mostly Clear Night
+    1101: "partly cloudy day",       // Partly Cloudy Day
+    11011: "partly cloudy night",    // Partly Cloudy Night
+    1102: "mostly cloudy",           // Mostly Cloudy
+    2000: "fog",                    // Fog
+    2100: "fog light",              // Light Fog
+    4000: "drizzle",                // Drizzle
+    4200: "rain light",             // Light Rain
+    4001: "rain",                   // Rain
+    4201: "rain heavy",             // Heavy Rain
+    5000: "snow",                   // Snow
+    5001: "flurries",               // Flurries
+    5100: "snow light",             // Light Snow
+    5101: "snow heavy",             // Heavy Snow
+    6000: "freezing drizzle",       // Freezing Drizzle
+    6001: "freezing rain",          // Freezing Rain
+    6200: "freezing rain light",    // Light Freezing Rain
+    6201: "freezing rain heavy",    // Heavy Freezing Rain
+    7000: "ice pellets",            // Ice Pellets
+    7101: "ice pellets heavy",      // Heavy Ice Pellets
+    7102: "ice pellets light",      // Light Ice Pellets
+    8000: "Thunderstorm",                 // Thunderstorm
+};   
+
+                const weatherDescription = weatherImages[weatherCode] || "Unknown";
+                const weatherImage = weatherDescription.replace(/ /g, "_");
+                    const row = `
+                        <tr data-index="${index}">
+                            <td>${date}</td>
+                            <td>
+                             <img src="weather_images/${weatherImage}.svg" alt="${weatherDescription}" class="weather-icon" style="width: 50px; height: 50px; vertical-align: middle; margin-right: 5px;">
+                                ${weatherDescription}
+                            </td>
+                            <td>${maxTemp}°F</td>
+                            <td>${minTemp}°F</td>
+                            <td>${windSpeed}</td>
+                        </tr>
+                    `;
+
+                    forecastBody.innerHTML += row;
+                });
+
+                document.getElementById("forecast-table-container").style.display = "block";
+
+                const rows = document.querySelectorAll('#forecast-body tr');
+                rows.forEach(row => {
+                    row.addEventListener('click', function () {
+                        const index = this.getAttribute('data-index');
+                        const selectedDay = forecastData[index];
+                        displayDailyWeatherDetails(selectedDay);
+                    });
+                });
+            }
+        }
+    })
+    .catch(error => {
+        console.error("Error fetching weather data:", error);
+        document.getElementById("results").innerHTML = "Error fetching weather data.";
+    });
+}
+
+    function displayDailyWeatherDetails(day) {
+        document.getElementById("forecast-table-container").style.display = "none";
+        const date = new Date(day.time).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        const maxTemp = day.values.temperatureMax ?? "N/A";
+        const minTemp = day.values.temperatureMin ?? "N/A";
+        const humidity = day.values.humidityAvg ?? "N/A";
+        const windSpeed = day.values.windSpeedAvg ?? "N/A";
+        const visibility = day.values.visibilityAvg ?? "N/A";
+        const precipitation = day.values.rainAccumulationAvg ?? "N/A";
+        const chanceOfRain = day.values.precipitationProbabilityAvg ?? "N/A";
+        const sunriseTime = formatTimeToAMPM(day.values.sunriseTime ?? "2024-10-16T06:00:00Z"); 
+        const sunsetTime = formatTimeToAMPM(day.values.sunsetTime ?? "2024-10-17T06:00:00Z");
+        const tempInformation = `${maxTemp}°F / ${minTemp}°F`;
+
+        const timeString = `${sunriseTime} / ${sunsetTime}`;
+
+        const weatherImages = {
+    1000: "clear day",              // Clear, Sunny
+    10001: "clear night",           // Clear Night
+    1001: "cloudy",                 // Cloudy
+    1100: "mostly clear day",        // Mostly Clear Day
+    11001: "mostly clear night",     // Mostly Clear Night
+    1101: "partly cloudy day",       // Partly Cloudy Day
+    11011: "partly cloudy night",    // Partly Cloudy Night
+    1102: "mostly cloudy",           // Mostly Cloudy
+    2000: "fog",                    // Fog
+    2100: "fog light",              // Light Fog
+    4000: "drizzle",                // Drizzle
+    4200: "rain light",             // Light Rain
+    4001: "rain",                   // Rain
+    4201: "rain heavy",             // Heavy Rain
+    5000: "snow",                   // Snow
+    5001: "flurries",               // Flurries
+    5100: "snow light",             // Light Snow
+    5101: "snow heavy",             // Heavy Snow
+    6000: "freezing drizzle",       // Freezing Drizzle
+    6001: "freezing rain",          // Freezing Rain
+    6200: "freezing rain light",    // Light Freezing Rain
+    6201: "freezing rain heavy",    // Heavy Freezing Rain
+    7000: "ice pellets",            // Ice Pellets
+    7101: "ice pellets heavy",      // Heavy Ice Pellets
+    7102: "ice pellets light",      // Light Ice Pellets
+    8000: "Thunderstorm",                 // Thunderstorm
+};   
+
+    const weatherCodeName = day.values.weatherCodeMax ?? "N/A";  
+    const weatherDescription = weatherImages[day.values.weatherCodeMax] || "Unknown"; 
+    const weatherIcon = weatherDescription.replace(/ /g, "_");
+
+    const dailyWeatherCardHTML = `
+        <div id="daily-weather-card">
+            <h2 id="daily-weather-title">Daily Weather Details</h2>
+            <div class="daily-weather-card">
+                <div class="daily-weather-header">
+                    <div class="left-section">
+                        <div class="date">${date}</div>
+                        <div class="weather-description">${weatherDescription}</div>
+                        <div class="temp-information">${tempInformation}</div>
+                    </div>
+                    <img src="weather_images/${weatherIcon}.svg" alt="Weather Icon" class="weather-icon">
+                </div>
+                <div class="daily-weather-details">
+                    <div class="detail-item">Precipitation: <strong>${precipitation} inches</strong></div>
+                    <div class="detail-item">Chance of Rain: <strong>${chanceOfRain}%</strong></div>
+                    <div class="detail-item">Wind Speed: <strong>${windSpeed} mph</strong></div>
+                    <div class="detail-item">Humidity: <strong>${humidity}%</strong></div>
+                    <div class="detail-item">Visibility: <strong>${visibility} miles</strong></div>
+                    <div class="detail-item">Sunrise/Sunset: <strong>${timeString}</strong></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById("weather-card-container").innerHTML = dailyWeatherCardHTML;
+    document.getElementById("daily-weather-card").style.display = "block";
+    document.getElementById("weather-charts-header").style.display = "block";
+    document.getElementById("down-arrow-container").style.display = "block";
+    document.getElementById("forecast-table-container").classList.remove("show");
+}
+
+function createTemperatureChart(forecastData) {
+            const temperatureData = forecastData.slice(0, 6).map(day => {
+                const date = new Date(day.time).getTime(); 
+                return [date, day.values.temperatureMin, day.values.temperatureMax]; 
+            });
+            Highcharts.chart('chart-container', {
+                chart: {
+                    type: 'arearange',
+                    zooming: {
+                        type: 'x'
+                    },
+                    scrollablePlotArea: {
+                        minWidth: 600,
+                        scrollPositionX: 1
+                    }
+                },
+                title: {
+                    text: 'Temperature Ranges (Min, Max)'
+                },
+                xAxis: {
+                    type: 'datetime',
+                    accessibility: {
+                        rangeDescription: 'Next 5 days'
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: 'Temperature (°F)'
+                    }
+                },
+                tooltip: {
+                    crosshairs: true,
+                    shared: true,
+                    valueSuffix: '°F',
+                    xDateFormat: '%A, %b %e'
+                },
+                legend: {
+                    enabled: false
+                },
+                series: [{
+                    name: 'Temperatures',
+                    data: temperatureData, 
+                    color: {
+                        linearGradient: {
+                            x1: 0,
+                            x2: 0,
+                            y1: 0,
+                            y2: 1
+                        },
+                        stops: [
+                            [0, '#FFA500'], 
+                            [1, '#ADD8E6']  
+                        ]
+                    }
+                }]
+            });
+        }
+
+        function fetchForecastAndShowChart(lat, lng) {
+            fetch(`http://127.0.0.1:5000/weather?lat=${lat}&lng=${lng}`)
+                .then(response => response.json())
+                .then(weatherData => {
+                    if (weatherData.forecast && weatherData.forecast.timelines.daily) {
+                        const forecastData = weatherData.forecast.timelines.daily;
+                        createTemperatureChart(forecastData);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching forecast data:", error);
+                });
+        }
+    
+        function createMeteogram(forecastData) {
+            const temperatures = [];
+            const humidities = [];
+            const windSpeeds = [];
+            const airPressures = [];
+             const windBarbs = [];
+                forecastData.forEach((interval) => {
+                    const time = new Date(interval.startTime).getTime(); 
+        temperatures.push({
+            x: time,
+            y: interval.values.temperatureAvg, 
+        });
+
+        humidities.push({
+            x: time,
+            y: Math.round(interval.values.humidity), 
+        });
+
+        windSpeeds.push({
+            x: time,
+            y: interval.values.windSpeed, 
+        });
+
+        airPressures.push({
+            x: time,
+            y: interval.values.pressureSurfaceLevel, 
+        });
+
+        
+        windBarbs.push({
+            x: time,
+            value: interval.values.windSpeed, 
+            direction: interval.values.windDirection, 
+        });
+    });
+
+    Highcharts.chart('meteogram-container', {
+        chart: {
+            type: 'spline',
+            height: 500
+        },
+        title: {
+            text: 'Hourly Meteogram with Wind Barbs for the Next 5 Days'
+        },
+        xAxis: [{ 
+            type: 'datetime',
+            tickInterval: 36e5, 
+            labels: {
+                format: '{value:%H}', 
+            },
+            crosshair: true,
+            tickLength: 0, 
+            lineWidth: 0, 
+        }, { 
+            linkedTo: 0, 
+            type: 'datetime',
+            tickInterval: 24 * 3600 * 1000, 
+            labels: {
+                format: '{value:%A, %b %e}', 
+                align: 'left',
+                x: 3,
+                y: -10, 
+                rotation: 0,
+                style: {
+                    fontSize: '10px'
+                }
+            },
+            opposite: true 
+        }, {
+            type: 'datetime',
+            tickInterval: 2 * 36e5, 
+            labels: {
+                enabled: false 
+            },
+            top: 370, 
+            height: 40, 
+            tickLength: 0, 
+            lineWidth: 1 
+        }],
+        yAxis: [{
+            title: {
+                text: 'Temperature (°F)' 
+            },
+            labels: {
+                format: '{value}°F' 
+            }
+        }, {
+            title: {
+                text: 'Air Pressure (inHg)' 
+            },
+            labels: {
+                format: '{value} inHg' 
+            },
+            opposite: true,
+            gridLineWidth: 0, 
+            lineWidth: 1 
+        }],
+        tooltip: {
+            shared: true
+        },
+        plotOptions: {
+            windbarb: {
+                color: '#333333', 
+                vectorLength: 5, 
+                yOffset: -40 
+            }
+        },
+        series: [{
+            name: 'Temperature',
+            data: temperatures,
+            tooltip: {
+                valueSuffix: '°F'
+            },
+            color: '#FF3333', 
+        }, {
+            name: 'Humidity',
+            data: humidities, 
+            type: 'column',
+            yAxis: 0, 
+            color: '#68CFE8', 
+            tooltip: {
+                valueSuffix: ' %'
+            },
+            dataLabels: {
+                enabled: true, 
+                format: '{y}', 
+                style: {
+                    fontWeight: 'bold',
+                    color: '#000' 
+                },
+                inside: false, 
+            }
+        }, {
+            name: 'Air Pressure',
+            data: airPressures, 
+            yAxis: 1, 
+            tooltip: {
+                valueSuffix: ' inHg'
+            },
+            color: 'orange', 
+            lineWidth: 2, 
+        }, {
+            type: 'windbarb', 
+            name: 'Wind Barbs',
+            data: windBarbs, 
+            xAxis: 2, 
+            pointInterval: 4 * 36e5,
+        }]
+    });
+    document.getElementById('meteogram-container').style.display = 'block';
+}
+
+        function fetchHourlyMeteogram(lat, lng) {
+    fetch(`http://127.0.0.1:5000/weather?lat=${lat}&lng=${lng}`)
+        .then(response => response.json())
+        .then(weatherData => {
+            console.log("Full weather data response:", weatherData); 
+            if (weatherData.hourly && weatherData.hourly.data.timelines[0].intervals) {
+                const hourlyData = weatherData.hourly.data.timelines[0].intervals;
+                console.log("Hourly data: ", hourlyData);  
+                createMeteogram(hourlyData); 
+
+                document.getElementById('meteogram-header').style.display = 'block';
+                document.getElementById('meteogram-container').style.display = 'block';
+            } else {
+                console.error("Hourly data not found in the expected format.");
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching hourly data:", error);
+        });
+    }
+
+        document.getElementById('toggle-arrow').addEventListener('click', function () {
+            const chartContainer = document.getElementById('chart-container');
+            const meteogramContainer = document.getElementById('meteogram-container');
+            const arrowImage = document.getElementById('toggle-arrow');
+
+            if (chartContainer.style.display === 'none') {
+                chartContainer.style.display = 'block';
+                meteogramContainer.style.display = 'block';
+                arrowImage.src = 'images/point-up-512.png';
+                fetchForecastAndShowChart(lat, lng);
+                console.log('meteogram check'); 
+                fetchHourlyMeteogram(lat, lng);
+
+            } else {
+                chartContainer.style.display = 'none';
+                meteogramContainer.style.display = 'none';
+                arrowImage.src = 'images/point-down-512.png';
+            }
+        });
+</script>
 
 </body>
 </html>
