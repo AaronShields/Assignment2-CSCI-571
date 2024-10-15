@@ -5,7 +5,7 @@ import requests
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-cache = Cache(app, config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 1200})
+cache = Cache(app, config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 1800})
 API_KEY = 'SvUyKkKyi452sieofytGNMZOVSfxVTvk'
 
 @app.route('/')
