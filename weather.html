@@ -130,6 +130,7 @@
     <script>
         let lat = null;
         let lng = null;
+        let fetchStateOnlyBool = false; 
         
         function showErrorMessage(inputElement) {
             if (!inputElement) {
@@ -238,6 +239,8 @@
         console.error("forecast-body not found!");
     }
 
+    fetchStateOnlyBool = false; 
+
     document.querySelectorAll('.error-message').forEach(function(el) {
         el.remove();
     });
@@ -260,6 +263,7 @@ function formatTimeToAMPM(timeStr) {
         function displayResults(message) {
             document.getElementById("results").innerHTML = `<p>${message}</p>`;
         }
+        
 
         function sendToServer(street, city, state) {
             const apiKey = 'AIzaSyD5fCf4IpcurNZal3VYv2UUwOO_kbSnmtY';
@@ -275,7 +279,7 @@ function formatTimeToAMPM(timeStr) {
                         lng = location.lng;
                         fetchWeatherData(lat, lng);
                     } else {
-                        displayResults("Geocoding failed. Please check the address.");
+                        fetchStateOnly(state);
                     }
                 })
                 .catch(error => {
@@ -284,16 +288,52 @@ function formatTimeToAMPM(timeStr) {
                 });
         }
 
+        function fetchStateOnly(state) {
+    const apiKey = 'AIzaSyD5fCf4IpcurNZal3VYv2UUwOO_kbSnmtY';
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(state)}&key=${apiKey}`;
+    fetchStateOnlyBool = true; 
+    fetch(geocodeUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'OK' && data.results.length > 0) {
+                const location = data.results[0].geometry.location;
+                lat = location.lat;
+                lng = location.lng;
+                fetchWeatherData(lat, lng, '', state); // Use lat/lng from state and fallback to displaying state only
+            } else {
+                console.error("State lookup also failed.");
+                displayResults("No valid results found for the entered address.");
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching geocoding data for state.", error);
+            displayResults("Error fetching data for the state.");
+        });
+}
+
+
         function fetchWeatherData(lat, lng, detectedCity = '', detectedRegion = '') {
     fetch(`http://127.0.0.1:5000/weather?lat=${lat}&lng=${lng}`)
         .then(response => response.json())
         .then(weatherData => {
             console.log("Combined Weather Data Response:", weatherData);
 
-            const street = document.getElementById('street').value || '';
-            const city = document.getElementById('city').value || detectedCity;
-            const state = document.getElementById('state').value || detectedRegion;
-            const address = `${street}, ${city}, ${state}`;
+            if (!weatherData || Object.keys(weatherData).length === 0) {
+                document.getElementById("results").innerHTML = "<p>No records have been found.</p>";
+                return;
+            }
+                
+                const street = document.getElementById('street').value || '';
+                const city = document.getElementById('city').value || detectedCity;
+                const state = document.getElementById('state').value || detectedRegion;
+                const address = `${street}, ${city}, ${state}`;
+                
+            if(fetchStateOnlyBool){
+                const state = document.getElementById('state').value || detectedRegion;
+                address = `${state}`; 
+                console.log("State only mode activated with:", address);
+            }
+            fetchStateOnlyBool = false; 
 
             if (weatherData.realtime && weatherData.realtime.data) {
                 const realtime = weatherData.realtime.data.values;
@@ -303,7 +343,7 @@ function formatTimeToAMPM(timeStr) {
                 const currentPressure = realtime.pressureSurfaceLevel || "N/A";
                 const currentWindSpeed = realtime.windSpeed || "N/A";
                 const currentVisibility = realtime.visibility || "N/A";
-                const currentCloudCover = realtime.cloudCover || "N/A";
+                const currentCloudCover = (realtime.cloudCover !== null && realtime.cloudCover !== undefined) ? realtime.cloudCover : "N/A";
                 const currentUVIndex = (realtime.uvIndex !== null && realtime.uvIndex !== undefined) ? realtime.uvIndex : "N/A";
                 const weatherCode = realtime.weatherCode || 0;
 
